@@ -20,9 +20,15 @@ primary_region = "fra"  # Frankfurt — closest to Supabase eu-central-1
 [env]
   ENVIRONMENT = "production"
   API_PORT    = "8000"
+  # Supabase direct connection (IPv6 from Fly) + scoped ow_app role.
+  DB_HOST     = "db.yqzycwuyhvzkbofwkazr.supabase.co"
   DB_PORT     = "5432"
   DB_NAME     = "postgres"
+  DB_USER     = "ow_app"
+  # Plain Redis on Fly private network (no TLS, not publicly exposed).
+  REDIS_HOST  = "breaktapes-wearables-redis.internal"
   REDIS_PORT  = "6379"
+  REDIS_DB    = "0"
   # Force OW's tables into the isolated schema + require SSL to Supabase.
   PGOPTIONS   = "-c search_path=open_wearables"
   PGSSLMODE   = "require"

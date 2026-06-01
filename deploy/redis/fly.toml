@@ -1,0 +1,19 @@
+# Plain Redis for Open Wearables (Celery broker + result backend).
+# Private network only — reached via breaktapes-wearables-redis.internal:6379
+# over Fly's 6PN (encrypted WireGuard mesh). No public IP, no TLS.
+#
+# protected-mode off is safe here: the only network path to this Redis is
+# the private 6PN; there is no public port and no flycast service.
+
+app = "breaktapes-wearables-redis"
+primary_region = "fra"
+
+[build]
+  image = "redis:7-alpine"
+
+[experimental]
+  cmd = ["redis-server", "--protected-mode", "no", "--maxmemory", "200mb", "--maxmemory-policy", "allkeys-lru"]
+
+[[vm]]
+  size   = "shared-cpu-1x"
+  memory = "256mb"
