@@ -1,9 +1,17 @@
 #!/bin/bash
 set -e -x
 
-# Ensure svix database exists (idempotent)
-echo 'Ensuring svix database...'
-uv run python scripts/init/create_svix_db.py
+# Ensure svix database exists (idempotent).
+# BREAKTAPES PATCH: svix (outgoing webhooks) is not used — we poll providers.
+# On managed Postgres (Supabase) the app role can't CREATE DATABASE, so this
+# step is gated behind ENABLE_SVIX and made non-fatal. Default: skip.
+if [ "${ENABLE_SVIX:-false}" = "true" ]; then
+    echo 'Ensuring svix database...'
+    uv run python scripts/init/create_svix_db.py \
+        || echo "Warning: svix DB creation failed — continuing without svix."
+else
+    echo 'Skipping svix database (ENABLE_SVIX != true).'
+fi
 
 # Init database
 echo 'Applying migrations...'
@@ -41,13 +49,18 @@ uv run python scripts/data_migrations/normalize_body_fat_percentage.py \
 echo 'Initializing archival settings...'
 uv run python scripts/init/seed_archival_settings.py
 
-# Register webhook event types with Svix (with retry, non-fatal)
-echo 'Registering webhook event types...'
-for i in 1 2 3; do
-    uv run python scripts/init/seed_webhook_event_types.py && break
-    echo "Svix not ready yet, retrying in 5s... (attempt ${i}/3)"
-    sleep 5
-done || echo "Warning: Could not register webhook event types with Svix. Will retry on next startup."
+# Register webhook event types with Svix (with retry, non-fatal).
+# BREAKTAPES PATCH: only attempt when svix is enabled.
+if [ "${ENABLE_SVIX:-false}" = "true" ]; then
+    echo 'Registering webhook event types...'
+    for i in 1 2 3; do
+        uv run python scripts/init/seed_webhook_event_types.py && break
+        echo "Svix not ready yet, retrying in 5s... (attempt ${i}/3)"
+        sleep 5
+    done || echo "Warning: Could not register webhook event types with Svix. Will retry on next startup."
+else
+    echo 'Skipping svix webhook registration (ENABLE_SVIX != true).'
+fi
 
 # Init app
 echo "Starting the FastAPI application..."
